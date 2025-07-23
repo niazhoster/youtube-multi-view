@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Multi-View - Videos & Shorts</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #video-url {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+        }
+        #load-btn {
+            padding: 10px 20px;
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #load-btn:hover {
+            background-color: #cc0000;
+        }
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        .shorts-wrapper {
+            position: relative;
+            padding-bottom: 177.78%; /* 9:16 aspect ratio for Shorts */
+            height: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        .video-wrapper iframe,
+        .shorts-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .segment-controls {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .segment-btn {
+            padding: 5px 10px;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .segment-btn:hover {
+            background-color: #e1e1e1;
+        }
+        .info {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #eef;
+            border-radius: 4px;
+        }
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .mode-btn {
+            padding: 8px 16px;
+            margin: 0 5px;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .mode-btn.active {
+            background-color: #ff0000;
+            color: white;
+        }
+        .settings {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>YouTube Multi-View - Videos & Shorts</h1>
+            <p>Load your YouTube content in multiple instances to potentially increase views and watch time</p>
+        </div>
+        
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="video">Regular Video</button>
+            <button class="mode-btn" data-mode="shorts">Shorts</button>
+        </div>
+        
+        <div class="settings">
+            <div>
+                <label for="instance-count">Number of instances:</label>
+                <input type="number" id="instance-count" min="1" max="10" value="4">
+            </div>
+            <div>
+                <label>
+                    <input type="checkbox" id="autoplay" checked>
+                    Autoplay
+                </label>
+                <label>
+                    <input type="checkbox" id="mute" checked>
+                    Mute audio
+                </label>
+                <label>
+                    <input type="checkbox" id="loop" checked>
+                    Loop
+                </label>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="video-url" placeholder="Enter YouTube video/short URL or ID">
+            <button id="load-btn">Load Content</button>
+        </div>
+        
+        <div id="video-container" class="video-grid">
+            <!-- Content will be loaded here -->
+        </div>
+        
+        <div class="info">
+            <h3>How this works:</h3>
+            <p class="video-info">This page loads your YouTube video in multiple segments simultaneously. Each segment plays a different part of your video, which may contribute to increased watch time.</p>
+            <p class="shorts-info" style="display:none;">This page loads multiple instances of your YouTube Short to potentially increase views. Each instance plays the full Short.</p>
+            <p><strong>Important:</strong> YouTube's algorithms are sophisticated and may not count artificial views. This tool is for testing purposes only.</p>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'video';
+        
+        // Mode selector
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentMode = this.dataset.mode;
+                
+                // Update UI based on mode
+                if (currentMode === 'video') {
+                    document.querySelector('.video-info').style.display = 'block';
+                    document.querySelector('.shorts-info').style.display = 'none';
+                    document.getElementById('video-url').placeholder = "Enter YouTube video URL or ID";
+                } else {
+                    document.querySelector('.video-info').style.display = 'none';
+                    document.querySelector('.shorts-info').style.display = 'block';
+                    document.getElementById('video-url').placeholder = "Enter YouTube Short URL or ID";
+                }
+            });
+        });
+        
+        // Load button
+        document.getElementById('load-btn').addEventListener('click', function() {
+            const urlInput = document.getElementById('video-url').value.trim();
+            const videoId = extractVideoId(urlInput);
+            
+            if (!videoId) {
+                alert('Please enter a valid YouTube URL or video ID');
+                return;
+            }
+            
+            if (currentMode === 'video') {
+                loadVideoSegments(videoId);
+            } else {
+                loadShortsInstances(videoId);
+            }
+        });
+        
+        function extractVideoId(url) {
+            // Handle full URL
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|shorts\/|&v=)([^#&?]*).*/;
+                const match = url.match(regExp);
+                return (match && match[2].length === 11) ? match[2] : null;
+            }
+            // Assume it's a video ID if 11 characters
+            return url.length === 11 ? url : null;
+        }
+        
+        function loadVideoSegments(videoId) {
+            const container = document.getElementById('video-container');
+            container.innerHTML = '';
+            
+            const instanceCount = parseInt(document.getElementById('instance-count').value) || 4;
+            const autoplay = document.getElementById('autoplay').checked ? 1 : 0;
+            const mute = document.getElementById('mute').checked ? 1 : 0;
+            const loop = document.getElementById('loop').checked ? 1 : 0;
+            
+            for (let i = 0; i < instanceCount; i++) {
+                const startTime = Math.floor((i / instanceCount) * 60); // Assuming 1 minute video
+                const endTime = Math.floor(((i + 1) / instanceCount) * 60);
+                
+                const videoElement = document.createElement('div');
+                videoElement.innerHTML = `
+                    <div class="video-wrapper">
+                        <iframe src="https://www.youtube.com/embed/${videoId}?start=${startTime}&end=${endTime}&autoplay=${autoplay}&mute=${mute}&loop=${loop}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen></iframe>
+                    </div>
+                    <div class="segment-controls">
+                        <span>Segment ${i + 1}</span>
+                        <span>${startTime}s - ${endTime}s</span>
+                    </div>
+                `;
+                
+                container.appendChild(videoElement);
+            }
+        }
+        
+        function loadShortsInstances(videoId) {
+            const container = document.getElementById('video-container');
+            container.innerHTML = '';
+            
+            const instanceCount = parseInt(document.getElementById('instance-count').value) || 4;
+            const autoplay = document.getElementById('autoplay').checked ? 1 : 0;
+            const mute = document.getElementById('mute').checked ? 1 : 0;
+            const loop = document.getElementById('loop').checked ? 1 : 0;
+            
+            for (let i = 0; i < instanceCount; i++) {
+                const shortsElement = document.createElement('div');
+                shortsElement.innerHTML = `
+                    <div class="shorts-wrapper">
+                        <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=${autoplay}&mute=${mute}&loop=${loop}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen></iframe>
+                    </div>
+                    <div class="segment-controls">
+                        <span>Instance ${i + 1}</span>
+                        <span>Full Short</span>
+                    </div>
+                `;
+                
+                container.appendChild(shortsElement);
+            }
+        }
+    </script>
+</body>
+</html>
